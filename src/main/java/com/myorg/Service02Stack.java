@@ -55,7 +55,7 @@ public class Service02Stack extends Stack {
         envVariables.put("AWS_REGION", "us-east-1");
         envVariables.put("AWS_SQS_QUEUE_PRODUCT_EVENTS_NAME", productEventsQueue.getQueueName());
 
-        ApplicationLoadBalancedFargateService service01 = ApplicationLoadBalancedFargateService.Builder.create(this, "ALB01")
+        ApplicationLoadBalancedFargateService service02 = ApplicationLoadBalancedFargateService.Builder.create(this, "ALB01")
             .serviceName("Service-02")
             .cluster(cluster)
             .cpu(512)
@@ -65,7 +65,7 @@ public class Service02Stack extends Stack {
             .taskImageOptions(
                 ApplicationLoadBalancedTaskImageOptions.builder()
                     .containerName("aws_project02")
-                    .image(ContainerImage.fromRegistry("acs03/aws_project02:1.0.0"))
+                    .image(ContainerImage.fromRegistry("acs03/aws_project02:1.1.0"))
                     .containerPort(9090)
                     .logDriver(LogDriver.awsLogs(AwsLogDriverProps.builder()
                         .logGroup(LogGroup.Builder.create(this, "Service02LogGroup")
@@ -79,13 +79,13 @@ public class Service02Stack extends Stack {
             .publicLoadBalancer(true)
             .build();
 
-        service01.getTargetGroup().configureHealthCheck(new HealthCheck.Builder()
+        service02.getTargetGroup().configureHealthCheck(new HealthCheck.Builder()
             .path("/actuator/health")
             .port("9090")
             .healthyHttpCodes("200")
             .build());
 
-        ScalableTaskCount scalableTaskCount = service01.getService().autoScaleTaskCount(EnableScalingProps.builder()
+        ScalableTaskCount scalableTaskCount = service02.getService().autoScaleTaskCount(EnableScalingProps.builder()
             .minCapacity(2)
             .maxCapacity(4)
             .build());
@@ -95,5 +95,7 @@ public class Service02Stack extends Stack {
             .scaleInCooldown(Duration.seconds(60))
             .scaleOutCooldown(Duration.seconds(60))
             .build());
+
+        productEventsQueue.grantConsumeMessages(service02.getTaskDefinition().getTaskRole());
     }
 }
